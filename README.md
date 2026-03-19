@@ -51,6 +51,8 @@ io.sapl.pdp.embedded:
     public-key-path: signing.pub
 ```
 
+This uses `POLLING` mode (interval-based with ETag change detection), which works with any static HTTP server. For bundle servers that support holding connections, `LONG_POLL` mode delivers near-instant updates. See [Remote Bundles](https://sapl.io/docs/latest/7_4_RemoteBundles/) for configuration details.
+
 ```
 cd sapl-node && sapl
 ```
