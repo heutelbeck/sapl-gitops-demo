@@ -24,32 +24,37 @@ jobs:
       - uses: heutelbeck/setup-sapl@main
 
       - name: Run policy tests
+        run: sapl test --dir ./policies --policy-hit-ratio 100 --html
+
+      - name: Debug workspace contents
+        if: always()
         run: |
-          set -o pipefail
-          sapl test --dir ./policies --policy-hit-ratio 100 --html 2>&1 | tee test-output.txt
+          echo "=== working directory ==="
+          pwd
+          echo "=== all files ==="
+          find . -not -path './.git/*' -type f | sort
+          echo "=== sapl-coverage contents ==="
+          find sapl-coverage -type f 2>/dev/null || echo "sapl-coverage directory not found"
+          echo "=== coverage.ndjson ==="
+          if [ -f sapl-coverage/coverage.ndjson ]; then
+            echo "lines: $(wc -l < sapl-coverage/coverage.ndjson)"
+          else
+            echo "not found"
+          fi
 
       - name: Write job summary
         if: always()
         continue-on-error: true
         run: |
-          {
-            echo "## Policy Test Results"
-            echo ""
-            if [ -f test-output.txt ]; then
-              echo '```'
-              sed 's/\x1b\[[0-9;]*m//g' test-output.txt
-              echo '```'
-            fi
-
-            if [ -f sapl-coverage/coverage.ndjson ]; then
-              echo ""
-              echo "### Coverage"
+          if [ -f sapl-coverage/coverage.ndjson ]; then
+            {
+              echo "## Policy Coverage"
               echo ""
               echo "| Policy | Branch Coverage | Conditions | Covered |"
               echo "|--------|---------------|------------|---------|"
               jq -r '.policies[]? | "| \(.documentName) | \(.branchCoveragePercent)% | \(.conditionCount) | \(.fullyCoveredConditions) |"' sapl-coverage/coverage.ndjson | sort -u
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload coverage report
         if: always()
@@ -58,9 +63,6 @@ jobs:
         with:
           name: sapl-coverage
           path: sapl-coverage/
-
-      - name: Debug coverage output
-        run: find sapl-coverage -type f 2>/dev/null || echo "sapl-coverage directory not found"
 
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
