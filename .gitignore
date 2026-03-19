@@ -1,4 +1,4 @@
 signing.pem
 *.saplbundle
-policy-coverage/
+sapl-coverage/
 .DS_Store
