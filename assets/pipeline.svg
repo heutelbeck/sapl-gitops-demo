@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 320" font-family="Inter, -apple-system, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#028392"/>
+    </marker>
+    <marker id="arrow-down" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7bbdbc"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="320" rx="8" fill="#f8fafc"/>
+
+  <!-- Top row: main flow -->
+  <!-- git push -->
+  <rect x="20" y="30" width="130" height="50" rx="6" fill="#028392"/>
+  <text x="85" y="60" text-anchor="middle" fill="white" font-size="14" font-weight="600">git push</text>
+
+  <!-- Arrow -->
+  <line x1="150" y1="55" x2="195" y2="55" stroke="#028392" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- CI Pipeline -->
+  <rect x="200" y="30" width="150" height="50" rx="6" fill="#028392"/>
+  <text x="275" y="60" text-anchor="middle" fill="white" font-size="14" font-weight="600">CI Pipeline</text>
+
+  <!-- Arrow -->
+  <line x1="350" y1="55" x2="425" y2="55" stroke="#028392" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- GitHub Release -->
+  <rect x="430" y="30" width="170" height="50" rx="6" fill="#028392"/>
+  <text x="515" y="60" text-anchor="middle" fill="white" font-size="14" font-weight="600">GitHub Release</text>
+
+  <!-- Arrow -->
+  <line x1="600" y1="55" x2="665" y2="55" stroke="#028392" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- SAPL Node -->
+  <rect x="670" y="30" width="150" height="50" rx="6" fill="#028392"/>
+  <text x="745" y="60" text-anchor="middle" fill="white" font-size="14" font-weight="600">SAPL Node</text>
+
+  <!-- Middle row: actions -->
+  <!-- Vertical lines -->
+  <line x1="275" y1="80" x2="275" y2="120" stroke="#7bbdbc" stroke-width="1.5"/>
+  <line x1="515" y1="80" x2="515" y2="120" stroke="#7bbdbc" stroke-width="1.5"/>
+  <line x1="745" y1="80" x2="745" y2="120" stroke="#7bbdbc" stroke-width="1.5"/>
+
+  <!-- CI actions -->
+  <rect x="200" y="120" width="150" height="50" rx="6" fill="#e2e8f0" stroke="#7bbdbc" stroke-width="1"/>
+  <text x="275" y="141" text-anchor="middle" fill="#1a1a2e" font-size="12" font-weight="500">sapl test</text>
+  <text x="275" y="157" text-anchor="middle" fill="#4a5568" font-size="11">coverage gates</text>
+
+  <!-- Release actions -->
+  <rect x="430" y="120" width="170" height="50" rx="6" fill="#e2e8f0" stroke="#7bbdbc" stroke-width="1"/>
+  <text x="515" y="141" text-anchor="middle" fill="#1a1a2e" font-size="12" font-weight="500">publish signed</text>
+  <text x="515" y="157" text-anchor="middle" fill="#4a5568" font-size="11">.saplbundle</text>
+
+  <!-- Node actions -->
+  <rect x="670" y="120" width="150" height="50" rx="6" fill="#e2e8f0" stroke="#7bbdbc" stroke-width="1"/>
+  <text x="745" y="141" text-anchor="middle" fill="#1a1a2e" font-size="12" font-weight="500">poll + verify</text>
+  <text x="745" y="157" text-anchor="middle" fill="#4a5568" font-size="11">load policies</text>
+
+  <!-- Bottom row: outputs -->
+  <!-- Vertical lines -->
+  <line x1="275" y1="170" x2="275" y2="210" stroke="#7bbdbc" stroke-width="1.5"/>
+  <line x1="515" y1="170" x2="515" y2="210" stroke="#7bbdbc" stroke-width="1.5"/>
+  <line x1="745" y1="170" x2="745" y2="210" stroke="#7bbdbc" stroke-width="1.5"/>
+
+  <!-- CI output -->
+  <rect x="200" y="210" width="150" height="50" rx="6" fill="#f0fdf4" stroke="#7bbdbc" stroke-width="1"/>
+  <text x="275" y="231" text-anchor="middle" fill="#1a1a2e" font-size="12" font-weight="500">GitHub Pages</text>
+  <text x="275" y="247" text-anchor="middle" fill="#4a5568" font-size="11">coverage report</text>
+
+  <!-- Release output -->
+  <rect x="430" y="210" width="170" height="50" rx="6" fill="#f0fdf4" stroke="#7bbdbc" stroke-width="1"/>
+  <text x="515" y="231" text-anchor="middle" fill="#1a1a2e" font-size="12" font-weight="500">release tag</text>
+  <text x="515" y="247" text-anchor="middle" fill="#4a5568" font-size="11">HTTP download</text>
+
+  <!-- Node output -->
+  <rect x="670" y="210" width="150" height="50" rx="6" fill="#f0fdf4" stroke="#7bbdbc" stroke-width="1"/>
+  <text x="745" y="231" text-anchor="middle" fill="#1a1a2e" font-size="12" font-weight="500">serve decisions</text>
+  <text x="745" y="247" text-anchor="middle" fill="#4a5568" font-size="11">logs + metrics</text>
+
+  <!-- Legend / tool labels at bottom -->
+  <text x="275" y="290" text-anchor="middle" fill="#929699" font-size="10">Any CI system</text>
+  <text x="515" y="290" text-anchor="middle" fill="#929699" font-size="10">Any HTTP server</text>
+  <text x="745" y="290" text-anchor="middle" fill="#929699" font-size="10">Prometheus + stdout</text>
+</svg>
