@@ -32,13 +32,16 @@ jobs:
 
       - name: Write job summary
         if: always()
+        continue-on-error: true
         run: |
           {
             echo "## Policy Test Results"
             echo ""
-            echo '```'
-            sed 's/\x1b\[[0-9;]*m//g' test-output.txt
-            echo '```'
+            if [ -f test-output.txt ]; then
+              echo '```'
+              sed 's/\x1b\[[0-9;]*m//g' test-output.txt
+              echo '```'
+            fi
 
             if [ -f sapl-coverage/coverage.ndjson ]; then
               echo ""
