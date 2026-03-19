@@ -2,5 +2,5 @@ policy "modify string arguments"
 permit
     action.http.contextPath == "/string";
 obligation {
-              "suffix" : "HELLO MODIFICATION 2"
+              "suffix" : "HELLO MODIFICATION 3"
            }
