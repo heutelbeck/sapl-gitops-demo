@@ -90,20 +90,20 @@ jobs:
         run: sed -i "s/@HEAD/@${GITHUB_SHA::7}/" policies/pdp.json
 
       - name: Create signed bundle
-        run: sapl bundle create -i ./policies -k /tmp/signing.pem -o policies.saplbundle
+        run: sapl bundle create -i ./policies -k /tmp/signing.pem -o default.saplbundle
 
       - name: Verify bundle with public key
-        run: sapl bundle verify -b policies.saplbundle -k signing.pub
+        run: sapl bundle verify -b default.saplbundle -k signing.pub
 
       - name: Inspect bundle
-        run: sapl bundle inspect -b policies.saplbundle
+        run: sapl bundle inspect -b default.saplbundle
 
       - name: Clean up signing key
         if: always()
         run: rm -f /tmp/signing.pem
 
       - name: Generate checksum
-        run: sha256sum policies.saplbundle > SHA256SUMS.txt
+        run: sha256sum default.saplbundle > SHA256SUMS.txt
 
       - name: Publish to release
         uses: softprops/action-gh-release@v2
@@ -112,7 +112,7 @@ jobs:
           name: Latest Policy Bundle
           prerelease: false
           files: |
-            policies.saplbundle
+            default.saplbundle
             SHA256SUMS.txt
             signing.pub
           body: |
@@ -120,6 +120,6 @@ jobs:
 
             Verify with:
             ```
-            sapl bundle verify -b policies.saplbundle -k signing.pub
-            sapl bundle inspect -b policies.saplbundle
+            sapl bundle verify -b default.saplbundle -k signing.pub
+            sapl bundle inspect -b default.saplbundle
             ```
