@@ -24,7 +24,29 @@ jobs:
       - uses: heutelbeck/setup-sapl@main
 
       - name: Run policy tests
-        run: sapl test --dir ./policies --policy-hit-ratio 100 --html --output policy-coverage
+        run: |
+          set -o pipefail
+          sapl test --dir ./policies --policy-hit-ratio 100 --html --output policy-coverage 2>&1 | tee test-output.txt
+
+      - name: Write job summary
+        if: always()
+        run: |
+          {
+            echo "## Policy Test Results"
+            echo ""
+            echo '```'
+            sed 's/\x1b\[[0-9;]*m//g' test-output.txt
+            echo '```'
+
+            if [ -f policy-coverage/coverage.ndjson ]; then
+              echo ""
+              echo "### Coverage"
+              echo ""
+              echo "| Policy | Branch Coverage | Conditions | Covered |"
+              echo "|--------|---------------|------------|---------|"
+              jq -r '.policies[]? | "| \(.documentName) | \(.branchCoveragePercent)% | \(.conditionCount) | \(.fullyCoveredConditions) |"' policy-coverage/coverage.ndjson | sort -u
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage report
         if: always()
@@ -34,7 +56,7 @@ jobs:
           path: policy-coverage/
 
       - name: Upload Pages artifact
-        if: success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && hashFiles('policy-coverage/html/report.html') != ''
         uses: actions/upload-pages-artifact@v3
         with:
           path: policy-coverage/html/
