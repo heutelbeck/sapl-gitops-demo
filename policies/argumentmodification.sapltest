@@ -13,7 +13,7 @@ requirement "String argument modification for /string endpoint" {
     scenario "permit with suffix obligation"
         when "user" attempts { "http": { "contextPath": "/string" } } on "resource"
         expect decision is permit, with obligation equals {
-            "suffix": "HELLO MODIFICATION"
+            "suffix": "HELLO MODIFICATION 2"
         };
 
     scenario "permit includes suffix key in obligation"
