@@ -1,67 +1,123 @@
-# sapl-gitops-demo
+# GitOps for Authorization Policies
 
-End-to-end demonstration of a GitOps pipeline for SAPL authorization policies: write policies, test them in CI, sign and publish bundles, and consume them from a running SAPL Node.
+## What this scenario is about
 
-## What this demonstrates
+Authorization policies change. Regulations tighten, roles evolve, new resources appear. The question is not whether policies will change, but how those changes reach your running systems safely.
 
-```
-git push -> CI tests policies -> signs bundle -> publishes to GitHub Release
-                |                                        |
-                v                                        v
-        coverage report                      SAPL Node downloads
-        deployed to Pages                    signed bundle
-```
+This scenario demonstrates a GitOps pipeline for SAPL authorization policies: policies and tests live in Git, every change is tested and coverage-gated in CI, signed bundles are published as release artifacts, and running SAPL Nodes pick up new bundles automatically.
 
-1. **Policy-as-code** -- `.sapl` policies and `.sapltest` tests live in version control
-2. **Automated testing** -- CI runs `sapl test` with coverage quality gates on every push
-3. **Coverage reporting** -- HTML coverage reports deployed to GitHub Pages
-4. **Cryptographic signing** -- Bundles are signed with Ed25519 keys, verified before publish
-5. **Artifact distribution** -- Signed bundles published as GitHub Release assets
-6. **Secure consumption** -- SAPL Node verifies bundle signatures before loading
+## The problem
 
-## Quick start
+Deploying authorization policy changes is uniquely risky. A misconfigured firewall rule is bad. A misconfigured authorization policy that silently permits access to patient records, financial data, or classified documents is worse, because it may go undetected until an audit or a breach.
 
-### 1. Fork or clone the repository
+Common failure modes:
 
-Fork this repository on GitHub, or clone and push to your own repo:
+- **Untested changes.** A policy author fixes one rule and unknowingly breaks another. Without automated tests, the regression ships to production.
+- **No coverage visibility.** Even with tests, teams cannot tell which policy conditions are actually exercised. Dead branches hide latent bugs.
+- **Manual deployment.** Copying policy files to servers introduces human error and makes rollbacks painful.
+- **No integrity verification.** If a policy file is modified on a server (accidentally or maliciously), the PDP loads it without question.
+- **No audit trail.** When something goes wrong, there is no record of which policy version was deployed, when, or by whom.
+
+Git solves the audit trail. CI solves testing. Cryptographic signing solves integrity. Remote bundle polling solves deployment. This demo wires them together.
+
+## How it works
 
 ```
-git clone https://github.com/heutelbeck/sapl-gitops-demo.git
-cd sapl-gitops-demo
+git push --> CI pipeline --> GitHub Release --> SAPL Node
+               |                  |                |
+           test policies     publish signed    poll + verify
+           coverage gates    bundle + key      load policies
+               |                  |                |
+           GitHub Pages      latest-bundle     serve decisions
+           (coverage HTML)   (release tag)     (HTTP API)
 ```
 
-### 2. Install the SAPL CLI
+The pipeline has three stages:
 
-Download the latest binary from [SAPL releases](https://github.com/heutelbeck/sapl-policy-engine/releases/tag/snapshot-node) for your platform and add it to your PATH.
+1. **Test.** The SAPL CLI discovers all `.sapl` policies and `.sapltest` test files, runs every scenario, and enforces coverage quality gates. If any test fails or coverage is below threshold, the pipeline stops. An HTML coverage report is deployed to GitHub Pages.
 
-Verify:
+2. **Sign and publish.** The CLI packages all policies and `pdp.json` into a `.saplbundle` archive, signs it with an Ed25519 private key stored as a GitHub Secret, verifies the signature against the committed public key, and uploads the bundle to a GitHub Release.
+
+3. **Consume.** A SAPL Node configured with `REMOTE_BUNDLES` polls the GitHub Release URL. When it detects a new bundle (via HTTP ETag), it downloads it, verifies the Ed25519 signature, and hot-reloads the policies. No restart, no manual intervention.
+
+## The demo policies
+
+This repository includes four policy sets from a reactive web application:
+
+| Policy Set | What it demonstrates |
+|-----------|---------------------|
+| `classified_documents` | Time-window-based clearance levels (NATO_RESTRICTED, COSMIC_TOP_SECRET, NATO_UNCLASSIFIED) with obligation-driven document filtering |
+| `patients` | Medical record transformation: blackening ICD codes, deleting diagnoses, replacing fields, with progressive disclosure over time |
+| `demo_set` | Permit-to-deny transitions, resource transformation (wrapping responses), email obligations, logging advice |
+| `argumentmodification` | Method argument modification via obligations |
+
+All policies include streaming test scenarios that verify how decisions change as attribute values evolve over time.
+
+## The scenario in action
+
+### Testing catches mistakes
+
+The test suite includes an integration test that loads all policies together with `pdp.json` through the combining algorithm. This catches configuration errors that unit tests miss:
+
+```sapltest
+requirement "combined policy evaluation with pdp.json" {
+    given
+        - configuration "."
+
+    scenario "unmatched action denied by default"
+        given
+            - attribute "nowMock" <time.now> emits "t1"
+            - function time.secondOf(any) maps to 5
+        when "user" attempts { "java": { "name": "deleteEverything" } } on "resource"
+        expect deny;
+}
+```
+
+A broken `pdp.json` (wrong combining algorithm, invalid field) fails this test before the bundle is ever built.
+
+### Coverage gates prevent blind spots
+
+The pipeline enforces quality gates:
+
+- 100% policy set hit ratio -- every policy set is evaluated by at least one test
+- 100% policy hit ratio -- every individual policy is matched by at least one test
+- 80% condition hit ratio -- most condition branches are exercised
+
+If coverage drops below these thresholds, the pipeline fails with exit code 3 and no bundle is published.
+
+### Signed bundles prevent tampering
+
+Every bundle is signed with an Ed25519 key. The SAPL Node verifies the signature before loading. If someone modifies the bundle in transit or on the release, the node rejects it.
 
 ```
-sapl --version
+sapl bundle verify -b default.saplbundle -k signing.pub
 ```
 
-### 3. Generate a signing keypair
+### Remote polling closes the loop
+
+A running SAPL Node polls the GitHub Release URL every 60 seconds. When the pipeline publishes a new bundle, the node detects the change via HTTP ETag, downloads the new bundle, verifies its signature, and hot-reloads the policies. The `configurationId` in each bundle includes the Git commit hash for traceability.
+
+## Try it yourself
+
+### Prerequisites
+
+Download the SAPL CLI from [SAPL releases](https://github.com/heutelbeck/sapl-policy-engine/releases/tag/snapshot-node) and add it to your PATH.
+
+### Fork and configure
+
+1. **Fork** this repository on GitHub.
+
+2. **Generate a signing keypair:**
 
 ```
 sapl bundle keygen -o signing
 ```
 
-This creates `signing.pem` (private key) and `signing.pub` (public key).
+3. **Add the private key as a GitHub Secret:**
+   - Settings > Secrets and variables > Actions
+   - Create secret `BUNDLE_SIGNING_KEY` with the contents of `signing.pem`
 
-### 4. Configure your GitHub repository
-
-**Add the signing secret:**
-
-1. Go to Settings > Secrets and variables > Actions
-2. Create a new repository secret named `BUNDLE_SIGNING_KEY`
-3. Paste the contents of `signing.pem` as the value
-
-**Enable GitHub Pages:**
-
-1. Go to Settings > Pages
-2. Set Source to **GitHub Actions**
-
-**Commit the public key** (if you generated a new keypair):
+4. **Commit the public key** (if you generated a new keypair):
 
 ```
 git add signing.pub
@@ -69,47 +125,37 @@ git commit -m "add signing public key"
 git push
 ```
 
-### 5. Run the pipeline
+5. **Enable GitHub Pages:**
+   - Settings > Pages > Source: **GitHub Actions**
 
-Push any change to `policies/` on `main`, or trigger manually:
+6. **Trigger the pipeline:**
+   - Actions > Policy Pipeline > Run workflow
 
-1. Go to Actions > Policy Pipeline
-2. Click "Run workflow"
+After the run completes:
 
-The pipeline will:
+- **Coverage report** at `https://<you>.github.io/sapl-gitops-demo/`
+- **Signed bundle** in Releases under `latest-bundle`
+- **Test results and coverage metrics** in the Actions run summary
 
-1. Run all `.sapltest` files against the policies
-2. Enforce coverage quality gates (100% policy hit ratio)
-3. Deploy the HTML coverage report to GitHub Pages
-4. Create and sign a `.saplbundle`
-5. Verify the signature with the committed public key
-6. Publish the bundle to the `latest-bundle` GitHub Release
-
-### 6. View the coverage report
-
-After a successful run, the coverage report is available at:
+### Run tests locally
 
 ```
-https://<your-username>.github.io/sapl-gitops-demo/
+sapl test --dir ./policies --policy-hit-ratio 100
 ```
 
-### 7. Run a local SAPL Node with the published bundle
+### Run a SAPL Node against the published bundle
 
-There are two ways to consume the published bundle: download it once, or configure a SAPL Node to poll the release URL automatically.
-
-#### Option A: One-time download
+#### One-time download
 
 ```
 gh release download latest-bundle --pattern "*.saplbundle"
-gh release download latest-bundle --pattern "signing.pub"
-sapl bundle verify -b default.saplbundle -k signing.pub
 sapl bundle inspect -b default.saplbundle
 sapl --bundle default.saplbundle --no-verify
 ```
 
-#### Option B: Remote bundle polling (auto-updates)
+#### Remote bundle polling (auto-updates)
 
-Create a directory for the node and download the public key:
+Create a node directory:
 
 ```
 mkdir -p sapl-node/config
@@ -128,12 +174,11 @@ io.sapl.pdp.embedded:
   pdp-config-type: REMOTE_BUNDLES
 
   remote-bundles:
-    base-url: https://github.com/<your-username>/sapl-gitops-demo/releases/download/latest-bundle
+    base-url: https://github.com/<you>/sapl-gitops-demo/releases/download/latest-bundle
     pdp-ids:
       - default.saplbundle
     mode: POLLING
     poll-interval: 60s
-    follow-redirects: true
 
   bundle-security:
     public-key-path: signing.pub
@@ -142,40 +187,26 @@ io.sapl.pdp.embedded:
 Start the node:
 
 ```
-cd sapl-node
-sapl
+cd sapl-node && sapl
 ```
 
-The node fetches the signed bundle from your GitHub Release, verifies the signature, and starts serving decisions. It polls every 60 seconds for updates. When you push a policy change and the pipeline publishes a new bundle, the node picks it up automatically.
+The node fetches the signed bundle, verifies its signature, and starts serving decisions on `http://localhost:8443`. Push a policy change to `main` and watch the node reload within 60 seconds.
 
-#### Test a decision
+#### Query the node
 
 ```
 sapl decide-once --remote --url http://localhost:8443 -s '{"role":"admin"}' -a '{"java":{"name":"getDocuments"}}' -r '"resource"'
 ```
 
-### 8. Make a policy change
+### Make a policy change
 
-Edit a policy, push to `main`, and watch the pipeline run. If using remote bundle polling, the running node picks up the new bundle within the poll interval. No restart needed.
+Edit a policy under `policies/`, push to `main`, and watch the pipeline:
 
-## Included policies
+1. Tests run and coverage is verified
+2. A new signed bundle is published
+3. The running node picks it up automatically
 
-| Policy Set | Description |
-|-----------|-------------|
-| `classified_documents` | NATO clearance-level document filtering based on time windows |
-| `patients` | Medical record transformation with blackening, deletion, and replacement |
-| `demo_set` | Time-based permit/deny transitions with logging obligations, email notifications, and resource transformation |
-| `argumentmodification` | Method argument modification via obligations |
-
-All policies include streaming test scenarios demonstrating SAPL's reactive decision updates.
-
-## Running tests locally
-
-```
-sapl test --dir ./policies --policy-hit-ratio 100
-```
-
-This discovers all `.sapl` and `.sapltest` files, runs the tests, and generates an HTML coverage report in `./sapl-coverage/html/`.
+Pull requests run tests without publishing, so reviewers see results before merging.
 
 ## Repository structure
 
@@ -196,9 +227,14 @@ signing.pub                       Ed25519 public key (for verification)
   policy-pipeline.yml             CI/CD pipeline
 ```
 
-## Pull request workflow
+## Related
 
-On pull requests, the pipeline runs tests only (no bundle publish, no Pages deploy). Reviewers see test results and coverage artifacts before merging policy changes.
+- [SAPL documentation](https://sapl.io/docs) -- language reference, testing DSL, node configuration
+- [SAPL Testing](https://sapl.io/docs/latest/5_0_TestingSAPLPolicies) -- test DSL reference with mocking, streaming, and coverage
+- [Remote Bundles](https://sapl.io/docs/latest/7_4_RemoteBundles) -- configuring SAPL Node for remote bundle polling
+- [setup-sapl GitHub Action](https://github.com/heutelbeck/setup-sapl) -- install the SAPL CLI in GitHub Actions workflows
+- [Spring Security scenario](/scenarios/spring/) -- securing a Spring Boot application with SAPL
+- [AI scenarios](/scenarios/ai-rag/) -- authorization for RAG pipelines, tool calling, and human-in-the-loop
 
 ## License
 
