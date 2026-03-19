@@ -18,8 +18,6 @@ jobs:
   test:
     name: Test Policies
     runs-on: ubuntu-latest
-    outputs:
-      has-html: ${{ steps.check-html.outputs.exists }}
     steps:
       - uses: actions/checkout@v5
 
@@ -61,18 +59,11 @@ jobs:
           name: sapl-coverage
           path: sapl-coverage/
 
-      - name: Check for HTML report
-        id: check-html
-        run: |
-          ls -la sapl-coverage/ || true
-          if [ -d sapl-coverage/html ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Debug coverage output
+        run: find sapl-coverage -type f 2>/dev/null || echo "sapl-coverage directory not found"
 
       - name: Upload Pages artifact
-        if: steps.check-html.outputs.exists == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4
         with:
           path: sapl-coverage/html/
@@ -80,7 +71,7 @@ jobs:
   pages:
     name: Deploy Coverage to GitHub Pages
     needs: test
-    if: needs.test.outputs.has-html == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
