@@ -24,37 +24,21 @@ jobs:
       - uses: heutelbeck/setup-sapl@main
 
       - name: Run policy tests
-        run: sapl test --dir ./policies --policy-hit-ratio 100 --html
-
-      - name: Debug workspace contents
-        if: always()
         run: |
-          echo "=== working directory ==="
-          pwd
-          echo "=== all files ==="
-          find . -not -path './.git/*' -type f | sort
-          echo "=== sapl-coverage contents ==="
-          find sapl-coverage -type f 2>/dev/null || echo "sapl-coverage directory not found"
-          echo "=== coverage.ndjson ==="
-          if [ -f sapl-coverage/coverage.ndjson ]; then
-            echo "lines: $(wc -l < sapl-coverage/coverage.ndjson)"
-          else
-            echo "not found"
-          fi
+          set -o pipefail
+          sapl test --dir ./policies --policy-hit-ratio 100 --policy-set-hit-ratio 100 --condition-hit-ratio 80 --html 2>&1 | tee test-output.txt
 
       - name: Write job summary
         if: always()
         continue-on-error: true
         run: |
-          if [ -f sapl-coverage/coverage.ndjson ]; then
-            {
-              echo "## Policy Coverage"
-              echo ""
-              echo "| Policy | Branch Coverage | Conditions | Covered |"
-              echo "|--------|---------------|------------|---------|"
-              jq -r '.policies[]? | "| \(.documentName) | \(.branchCoveragePercent)% | \(.conditionCount) | \(.fullyCoveredConditions) |"' sapl-coverage/coverage.ndjson | sort -u
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
+          {
+            echo "## Policy Test Results"
+            echo ""
+            echo '```'
+            sed 's/\x1b\[[0-9;]*m//g' test-output.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage report
         if: always()
