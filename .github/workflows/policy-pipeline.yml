@@ -1,0 +1,80 @@
+name: Policy Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths: [policies/**]
+  pull_request:
+    branches: [main]
+    paths: [policies/**]
+
+jobs:
+  test:
+    name: Test Policies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: heutelbeck/setup-sapl@main
+
+      - name: Run policy tests
+        run: sapl test --dir ./policies --policy-hit-ratio 100 --html --output policy-coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-coverage
+          path: policy-coverage/
+
+  deploy:
+    name: Sign and Publish Bundle
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: heutelbeck/setup-sapl@main
+
+      - name: Write signing key
+        run: echo "${BUNDLE_SIGNING_KEY}" > /tmp/signing.pem
+        env:
+          BUNDLE_SIGNING_KEY: ${{ secrets.BUNDLE_SIGNING_KEY }}
+
+      - name: Create signed bundle
+        run: sapl bundle create -i ./policies -k /tmp/signing.pem -o policies.saplbundle
+
+      - name: Verify bundle with public key
+        run: sapl bundle verify -b policies.saplbundle -k signing.pub
+
+      - name: Inspect bundle
+        run: sapl bundle inspect -b policies.saplbundle
+
+      - name: Clean up signing key
+        if: always()
+        run: rm -f /tmp/signing.pem
+
+      - name: Generate checksum
+        run: sha256sum policies.saplbundle > SHA256SUMS.txt
+
+      - name: Publish to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-bundle
+          name: Latest Policy Bundle
+          prerelease: false
+          files: |
+            policies.saplbundle
+            SHA256SUMS.txt
+            signing.pub
+          body: |
+            Signed policy bundle built from commit ${{ github.sha }}.
+
+            Verify with:
+            ```
+            sapl bundle verify -b policies.saplbundle -k signing.pub
+            sapl bundle inspect -b policies.saplbundle
+            ```
