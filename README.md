@@ -150,7 +150,7 @@ sapl test --dir ./policies --policy-hit-ratio 100
 ```
 gh release download latest-bundle --pattern "*.saplbundle"
 sapl bundle inspect -b default.saplbundle
-sapl --bundle default.saplbundle --no-verify
+sapl --bundle default.saplbundle --no-verify --server.ssl.enabled=false --io.sapl.pdp.embedded.print-text-report=true
 ```
 
 #### Remote bundle polling (auto-updates)
@@ -172,13 +172,14 @@ server:
 
 io.sapl.pdp.embedded:
   pdp-config-type: REMOTE_BUNDLES
+  print-text-report: true
 
   remote-bundles:
     base-url: https://github.com/<you>/sapl-gitops-demo/releases/download/latest-bundle
     pdp-ids:
       - default.saplbundle
     mode: POLLING
-    poll-interval: 60s
+    poll-interval: 5s
 
   bundle-security:
     public-key-path: signing.pub
@@ -190,21 +191,44 @@ Start the node:
 cd sapl-node && sapl
 ```
 
-The node fetches the signed bundle, verifies its signature, and starts serving decisions on `http://localhost:8443`. Push a policy change to `main` and watch the node reload within 60 seconds.
+The node fetches the signed bundle, verifies its signature, and starts serving decisions on `http://localhost:8443`. The `print-text-report` setting logs a human-readable evaluation report for every decision, showing which policies matched and why.
 
 #### Query the node
 
+In a second terminal, send a single decision request:
+
 ```
-sapl decide-once --remote --url http://localhost:8443 -s '{"role":"admin"}' -a '{"java":{"name":"getDocuments"}}' -r '"resource"'
+sapl decide-once --remote --url http://localhost:8443 -s '"user"' -a '{"http":{"contextPath":"/string"}}' -r '"resource"'
 ```
+
+Or subscribe to a streaming decision that updates when policies change:
+
+```
+sapl decide --remote --url http://localhost:8443 -s '"user"' -a '{"http":{"contextPath":"/string"}}' -r '"resource"'
+```
+
+The server log shows the full evaluation report for each decision. The streaming command keeps the connection open and emits a new JSON line whenever the policy evaluation result changes.
 
 ### Make a policy change
 
-Edit a policy under `policies/`, push to `main`, and watch the pipeline:
+With the streaming `sapl decide` still running, edit a policy under `policies/`, push to `main`, and watch:
 
-1. Tests run and coverage is verified
-2. A new signed bundle is published
-3. The running node picks it up automatically
+1. CI runs tests and verifies coverage
+2. A new signed bundle is published to the `latest-bundle` release
+3. The running node detects the new bundle on its next poll (within 60 seconds)
+4. The streaming decision emits a new result reflecting the policy change
+
+For example, change the obligation suffix in `argumentmodification.sapl` from `"HELLO MODIFICATION"` to `"UPDATED VIA GITOPS"` and push. The streaming output changes from:
+
+```json
+{"decision":"PERMIT","obligations":[{"suffix":"HELLO MODIFICATION"}]}
+```
+
+to:
+
+```json
+{"decision":"PERMIT","obligations":[{"suffix":"UPDATED VIA GITOPS"}]}
+```
 
 Pull requests run tests without publishing, so reviewers see results before merging.
 

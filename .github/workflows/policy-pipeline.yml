@@ -121,5 +121,5 @@ jobs:
             Verify with:
             ```
             sapl bundle verify -b default.saplbundle -k signing.pub
-            sapl bundle inspect -b default.saplbundle
+            sapl bundle inspect -b default
             ```
