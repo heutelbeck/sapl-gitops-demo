@@ -2,6 +2,6 @@
   "algorithm": {
     "votingMode": "PRIORITY_DENY",
     "defaultDecision": "DENY",
-    "errorHandling": "DENY"
+    "errorHandling": "ABSTAIN"
   }
 }

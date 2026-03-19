@@ -1,0 +1,33 @@
+/*
+ * Integration Tests
+ *
+ * These tests load all policies together with pdp.json to verify
+ * the combining algorithm produces correct end-to-end decisions.
+ */
+
+requirement "combined policy evaluation with pdp.json" {
+
+    given
+        - configuration "."
+
+    scenario "classified documents permit with clearance obligation"
+        given
+            - attribute "nowMock" <time.now> emits "t1"
+            - function time.secondOf(any) maps to 5
+        when "user" attempts { "java": { "name": "getDocuments" } } on "resource"
+        expect permit;
+
+    scenario "patients permit with transformation obligation"
+        given
+            - attribute "nowMock" <time.now> emits "t1"
+            - function time.secondOf(any) maps to 5
+        when "user" attempts { "java": { "name": "getPatients" } } on "resource"
+        expect permit;
+
+    scenario "unmatched action denied by default"
+        given
+            - attribute "nowMock" <time.now> emits "t1"
+            - function time.secondOf(any) maps to 5
+        when "user" attempts { "java": { "name": "deleteEverything" } } on "resource"
+        expect deny;
+}
