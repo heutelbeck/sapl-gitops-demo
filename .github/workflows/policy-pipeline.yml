@@ -96,6 +96,9 @@ jobs:
         env:
           BUNDLE_SIGNING_KEY: ${{ secrets.BUNDLE_SIGNING_KEY }}
 
+      - name: Stamp configurationId with git hash
+        run: sed -i "s/@HEAD/@${GITHUB_SHA::7}/" policies/pdp.json
+
       - name: Create signed bundle
         run: sapl bundle create -i ./policies -k /tmp/signing.pem -o policies.saplbundle
 
