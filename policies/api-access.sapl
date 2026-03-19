@@ -1,8 +1,0 @@
-policy "admin-full-access"
-permit
-    subject.role == "admin"
-
-policy "viewer-read-only"
-permit
-    subject.role == "viewer"
-    action == "read"
