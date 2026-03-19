@@ -3,10 +3,10 @@ name: Policy Pipeline
 on:
   push:
     branches: [main]
-    paths: [policies/**]
+    paths: [policies/**, .github/workflows/policy-pipeline.yml]
   pull_request:
     branches: [main]
-    paths: [policies/**]
+    paths: [policies/**, .github/workflows/policy-pipeline.yml]
   workflow_dispatch:
 
 permissions:

@@ -95,40 +95,68 @@ https://<your-username>.github.io/sapl-gitops-demo/
 
 ### 7. Run a local SAPL Node with the published bundle
 
-Download the signed bundle from your fork's release:
+There are two ways to consume the published bundle: download it once, or configure a SAPL Node to poll the release URL automatically.
+
+#### Option A: One-time download
 
 ```
 gh release download latest-bundle --pattern "*.saplbundle"
 gh release download latest-bundle --pattern "signing.pub"
+sapl bundle verify -b default.saplbundle -k signing.pub
+sapl bundle inspect -b default.saplbundle
+sapl --bundle default.saplbundle --no-verify
 ```
 
-Verify the bundle signature:
+#### Option B: Remote bundle polling (auto-updates)
+
+Create a directory for the node and download the public key:
 
 ```
-sapl bundle verify -b policies.saplbundle -k signing.pub
+mkdir -p sapl-node/config
+gh release download latest-bundle --pattern "signing.pub" --dir sapl-node
 ```
 
-Inspect its contents:
+Create `sapl-node/config/application.yml`:
+
+```yaml
+server:
+  port: 8443
+  ssl:
+    enabled: false
+
+io.sapl.pdp.embedded:
+  pdp-config-type: REMOTE_BUNDLES
+
+  remote-bundles:
+    base-url: https://github.com/<your-username>/sapl-gitops-demo/releases/download/latest-bundle
+    pdp-ids:
+      - default.saplbundle
+    mode: POLLING
+    poll-interval: 60s
+    follow-redirects: true
+
+  bundle-security:
+    public-key-path: signing.pub
+```
+
+Start the node:
 
 ```
-sapl bundle inspect -b policies.saplbundle
+cd sapl-node
+sapl
 ```
 
-Start a SAPL Node serving the bundle:
+The node fetches the signed bundle from your GitHub Release, verifies the signature, and starts serving decisions. It polls every 60 seconds for updates. When you push a policy change and the pipeline publishes a new bundle, the node picks it up automatically.
+
+#### Test a decision
 
 ```
-sapl --bundle policies.saplbundle --no-verify
-```
-
-The PDP server starts on `https://localhost:8443`. Test it with:
-
-```
-sapl decide-once --remote -s '{"role":"admin"}' -a '"read"' -r '"document"'
+sapl decide-once --remote --url http://localhost:8443 -s '{"role":"admin"}' -a '{"java":{"name":"getDocuments"}}' -r '"resource"'
 ```
 
 ### 8. Make a policy change
 
-Edit a policy, push to `main`, and watch the pipeline run. Download the new bundle and restart your local node to see the change take effect.
+Edit a policy, push to `main`, and watch the pipeline run. If using remote bundle polling, the running node picks up the new bundle within the poll interval. No restart needed.
 
 ## Included policies
 
