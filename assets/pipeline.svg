@@ -53,8 +53,8 @@
 
   <!-- IDE actions -->
   <rect x="20" y="120" width="130" height="50" rx="6" fill="#e2e8f0" stroke="#7bbdbc" stroke-width="1"/>
-  <text x="85" y="141" text-anchor="middle" fill="#1a1a2e" font-size="12" font-weight="500">syntax + diagnostics</text>
-  <text x="85" y="157" text-anchor="middle" fill="#4a5568" font-size="11">completions</text>
+  <text x="85" y="141" text-anchor="middle" fill="#1a1a2e" font-size="12" font-weight="500">diagnostics</text>
+  <text x="85" y="157" text-anchor="middle" fill="#4a5568" font-size="11">completions + format</text>
 
   <!-- CI actions -->
   <rect x="360" y="120" width="150" height="50" rx="6" fill="#e2e8f0" stroke="#7bbdbc" stroke-width="1"/>
