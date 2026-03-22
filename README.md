@@ -17,7 +17,7 @@ Version, test, sign, and deploy authorization policies using Git, your CI system
 7. **Trigger the pipeline:** Actions > Policy Pipeline > Run workflow
 
 After the run:
-- Coverage report at `https://<you>.github.io/sapl-gitops-demo/`
+- [Coverage report](https://heutelbeck.github.io/sapl-gitops-demo/) at `https://<you>.github.io/sapl-gitops-demo/`
 - Signed bundle in Releases under `latest-bundle`
 - Test results in the Actions run summary
 
